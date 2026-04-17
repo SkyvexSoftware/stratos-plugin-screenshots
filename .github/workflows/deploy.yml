@@ -1,0 +1,89 @@
+name: Deploy plugin to Skyvex
+
+# ──────────────────────────────────────────────────────────────
+# Builds the plugin and uploads a new version to the Skyvex
+# platform. The Skyvex API handles signing, CDN upload, and
+# metadata generation from the bundle.
+#
+# Required GitHub Actions secret:
+#   SKYVEX_API_TOKEN  – Passport bearer for the Skyvex API
+# ──────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "assets/**"
+      - "plugin.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - ".github/workflows/deploy.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Read manifest
+        id: manifest
+        run: |
+          VERSION=$(jq -r '.version' plugin.json)
+          PLUGIN_ID=$(jq -r '.id' plugin.json)
+          echo "version=$VERSION"     >> "$GITHUB_OUTPUT"
+          echo "plugin_id=$PLUGIN_ID" >> "$GITHUB_OUTPUT"
+          echo "Plugin: $PLUGIN_ID v$VERSION"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
+
+      - name: Build plugin
+        run: pnpm build
+
+      - name: Create bundle.zip
+        run: |
+          cd dist
+          zip -r ../bundle.zip .
+          cd ..
+          echo "Bundle size: $(du -h bundle.zip | cut -f1)"
+
+      - name: Upload to Skyvex API
+        env:
+          SKYVEX_API_TOKEN: ${{ secrets.SKYVEX_API_TOKEN }}
+          SKYVEX_API_URL: https://skyvexsoftware.com/api/stratos
+        run: |
+          PLUGIN_ID="${{ steps.manifest.outputs.plugin_id }}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${SKYVEX_API_URL}/plugins/${PLUGIN_ID}/versions" \
+            -H "Authorization: Bearer ${SKYVEX_API_TOKEN}" \
+            -H "Accept: application/json" \
+            -F "file=@bundle.zip")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -ne 201 ]; then
+            echo "Upload failed (HTTP $HTTP_CODE):"
+            echo "$BODY"
+            exit 1
+          fi
+
+          echo "Plugin uploaded and signing initiated:"
+          echo "$BODY" | jq .

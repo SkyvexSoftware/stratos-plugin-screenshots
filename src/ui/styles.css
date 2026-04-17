@@ -1,0 +1,40 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter+Tight:wght@400;500;700&display=swap");
+@import "tailwindcss";
+@source "./**/*.{ts,tsx}";
+
+@theme {
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Inter Tight", system-ui, sans-serif;
+
+  --animate-scr-slide-in: scr-slide-in 150ms ease-out both;
+  --animate-scr-fade: scr-fade 150ms ease-out both;
+  --animate-scr-pop: scr-pop 180ms ease-out both;
+}
+
+@keyframes scr-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scr-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scr-pop {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Stagger delays for the first six capture cards */
+.scr-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.scr-stagger > *:nth-child(2) { animation-delay: 60ms; }
+.scr-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.scr-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.scr-stagger > *:nth-child(5) { animation-delay: 240ms; }
+.scr-stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+/* Hide horizontal scrollbar on the HUD strip (utility-only escape hatch) */
+.scr-no-scrollbar::-webkit-scrollbar { display: none; }
+.scr-no-scrollbar { scrollbar-width: none; }
+
+/* Tabular numerals */
+.scr-tnum { font-feature-settings: "tnum" 1, "ss01" 1; }

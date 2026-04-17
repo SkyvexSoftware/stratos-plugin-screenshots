@@ -1,0 +1,24 @@
+{
+  "$schema": "https://cdn.skyvexsoftware.com/schemas/stratos-plugin.json",
+  "id": "screenshots",
+  "type": "airline",
+  "name": "Screenshots",
+  "version": "1.0.0",
+  "description": "Watches folders on disk for new screenshots, tags each one with live flight telemetry (phase, position, route, callsign, elapsed time), and attaches them to the pilot's current PIREP. Captures keep flowing whether the plugin pane is open or closed.",
+  "author": {
+    "id": "skyvex-software",
+    "name": "Skyvex Software Pty Ltd"
+  },
+  "icon_light": "icon-light.svg",
+  "icon_dark": "icon-dark.svg",
+  "availableSettings": [
+    {
+      "key": "autoAttach",
+      "name": "Auto-attach screenshots",
+      "description": "Automatically send each screenshot to the VA backend the moment it's tagged with telemetry. When off, you have to press Attach manually.",
+      "type": "boolean",
+      "scope": "user",
+      "default": false
+    }
+  ]
+}

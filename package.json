@@ -1,0 +1,33 @@
+{
+  "name": "screenshots",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && cross-env BUILD_TARGET=background vite build",
+    "bundle": "pnpm build && stratos-deploy",
+    "build:ui": "vite build",
+    "build:bg": "cross-env BUILD_TARGET=background vite build"
+  },
+  "devDependencies": {
+    "@skyvexsoftware/stratos-sdk": "^0.7.7",
+    "@tailwindcss/vite": "^4",
+    "@types/express": "^5.0.6",
+    "@types/react": "^19",
+    "@vitejs/plugin-react": "^5",
+    "cross-env": "^7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vite": "^7.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "lucide-react": "^0.577.0"
+  }
+}
