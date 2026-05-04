@@ -1,62 +1,67 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePluginContext } from "@skyvexsoftware/stratos-sdk";
 import { api } from "../api";
+import { SOCKET_CHANNELS } from "@/shared/protocol";
 import type { Screenshot, WatchedFolder } from "@/shared/types";
 
-// Plugin sockets aren't implemented in the shell yet, so we poll for
-// background-driven changes (folder additions detected on disk, new
-// captures from the watcher). Mutations also call refresh() directly so
-// the UI updates immediately without waiting for the next tick.
-const FOLDER_POLL_MS = 10_000;
-const SHOTS_POLL_MS = 2_500;
-
-function usePolledList<T>(
+// Initial state comes from an HTTP fetch; thereafter the background
+// pushes updates over `ctx.ipc.send` whenever the watcher detects new
+// captures or folder changes. Mutations still call refresh() directly
+// for instant feedback without waiting for the next broadcast.
+function useSocketBackedList<T>(
   fetcher: () => Promise<T>,
-  intervalMs: number,
+  channel: string,
   empty: T,
 ): { data: T; refresh: () => Promise<void> } {
   const [data, setData] = useState<T>(empty);
   const cancelledRef = useRef(false);
+  const { socket } = usePluginContext();
 
   const refresh = useCallback(async () => {
     try {
       const next = await fetcher();
       if (!cancelledRef.current) setData(next);
     } catch {
-      // swallow; next tick will retry
+      // swallow; later events or manual refresh will recover
     }
   }, [fetcher]);
 
   useEffect(() => {
     cancelledRef.current = false;
     void refresh();
-    const tick = () => {
-      if (document.visibilityState !== "visible") return;
-      void refresh();
+
+    const handler = (payload: unknown) => {
+      if (cancelledRef.current) return;
+      if (Array.isArray(payload)) {
+        setData(payload as T);
+      } else {
+        // Background sent something unexpected; fall back to refetch.
+        void refresh();
+      }
     };
-    const id = setInterval(tick, intervalMs);
-    document.addEventListener("visibilitychange", tick);
+    socket.on(channel, handler);
+
     return () => {
       cancelledRef.current = true;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", tick);
+      socket.off(channel, handler);
     };
-  }, [refresh, intervalMs]);
+  }, [refresh, socket, channel]);
 
   return { data, refresh };
 }
 
 export function useFolders() {
-  return usePolledList<WatchedFolder[]>(
+  return useSocketBackedList<WatchedFolder[]>(
     api.listFolders,
-    FOLDER_POLL_MS,
+    SOCKET_CHANNELS.foldersUpdated,
     [],
   );
 }
 
 export function useScreenshots() {
-  return usePolledList<Screenshot[]>(
+  return useSocketBackedList<Screenshot[]>(
     api.listScreenshots,
-    SHOTS_POLL_MS,
+    SOCKET_CHANNELS.screenshotsUpdated,
     [],
   );
 }

@@ -19,7 +19,10 @@ export const ROUTES = {
   file: (id: string) => `${API_PREFIX}/file/${id}`,
 } as const;
 
+// Leaf channel names. The shell auto-prefixes with `plugin:{pluginId}:` on
+// both the background `ctx.ipc.send` side and the UI `socket.on` side, so
+// leaving the prefix in here would double-stamp the channel.
 export const SOCKET_CHANNELS = {
-  screenshotsUpdated: `plugin:${PLUGIN_ID}:screenshots:updated`,
-  foldersUpdated: `plugin:${PLUGIN_ID}:folders:updated`,
+  screenshotsUpdated: "screenshots:updated",
+  foldersUpdated: "folders:updated",
 } as const;
