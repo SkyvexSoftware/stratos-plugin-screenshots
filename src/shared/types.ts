@@ -59,5 +59,14 @@ export type Screenshot = {
   fileSizeBytes: number | null;
   /** Null until the renderer tags it from live hook data. */
   telemetry: FlightTelemetry | null;
+  /**
+   * VA bid_id captured at file-detect time, alongside telemetry. The attach
+   * flow uploads against *this* value rather than re-querying the active
+   * flight at attach time, so a delayed/queued attach can't bind a shot to a
+   * different flight than the one it was taken in. Null when no VA flight
+   * was active at capture. Undefined on legacy records written before this
+   * binding existed — those fall back to the live binding at attach time.
+   */
+  capturedBidId?: string | null;
   attachment: AttachmentState;
 };

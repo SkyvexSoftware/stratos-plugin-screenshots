@@ -175,22 +175,25 @@ function Thumb({
         />
       )}
       {/* Telemetry overlay — hover-reveal only, so the thumbnail itself is
-          the resting visual rather than a label-soup band. */}
+          the resting visual rather than a label-soup band. The bar is
+          always dark, so colors are pinned to white shades rather than
+          theme tokens — otherwise light mode renders dark text on a dark
+          bar and the labels disappear. */}
       <div
         className={[
           "absolute left-0 right-0 bottom-0 px-2 py-1 flex gap-1.5",
           "bg-black/75 backdrop-blur-sm",
-          "font-mono text-[9px] text-foreground tracking-tight whitespace-nowrap overflow-hidden scr-tnum",
+          "font-mono text-[9px] text-white tracking-tight whitespace-nowrap overflow-hidden scr-tnum",
           "opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0",
           "transition-[opacity,transform] duration-150 ease-out",
         ].join(" ")}
       >
-        <span className="text-muted-foreground/70">{fmtPhase(t?.phase ?? null)}</span>
-        <span className="text-muted-foreground/40">·</span>
+        <span className="text-white/70">{fmtPhase(t?.phase ?? null)}</span>
+        <span className="text-white/40">·</span>
         <span>{fmtAltCompact(t?.altitudeFt ?? null)}</span>
-        <span className="text-muted-foreground/40">·</span>
+        <span className="text-white/40">·</span>
         <span>{fmtSpeedCompact(t?.groundSpeedKt ?? null)}</span>
-        <span className="text-muted-foreground/40">·</span>
+        <span className="text-white/40">·</span>
         <span>{fmtHeading(t?.headingDeg ?? null)}</span>
       </div>
     </button>
@@ -257,6 +260,28 @@ function AttachButton({
       .catch((err) => console.error("[screenshots] attach failed:", err))
       .finally(() => void onMutate());
   };
+
+  // Wrong-flight gate: this shot was pinned to a specific VA bid at capture
+  // time, and the active flight no longer matches (or there is no active
+  // flight). Refusing this attach is the fix for back-to-back-flight
+  // mis-attribution — the server would otherwise create a PirepMedia row
+  // against whichever flight is current, even though the photo was taken
+  // during the previous one.
+  const capturedBidId = shot.capturedBidId ?? null;
+  const wrongFlight =
+    capturedBidId != null && capturedBidId !== currentBidId;
+  if (wrongFlight) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="This screenshot was captured during a different flight"
+        className={`${baseCls} bg-transparent text-muted-foreground/50 border border-border/60 cursor-not-allowed`}
+      >
+        Wrong flight
+      </button>
+    );
+  }
 
   // The No-flight gate only applies to shots that haven't been uploaded yet.
   // A successfully attached shot stays attached even if the current bid id

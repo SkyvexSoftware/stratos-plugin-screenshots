@@ -66,10 +66,21 @@ export function createRouter(
       await broadcastFolders();
       await broadcastScreenshots();
 
-      // 2) Capture telemetry from local Stratos REST endpoints. This works
-      // even when the plugin pane is closed — that's the point.
-      const telemetry = await captureTelemetry(ctx.logger);
-      const tagged = await store.upsertScreenshot({ ...baseShot, telemetry });
+      // 2) Capture telemetry AND the active flight binding from local
+      // Stratos REST endpoints, in parallel so they share a moment in time.
+      // The bid is pinned onto the shot here so that a delayed attach (auto
+      // or manual) uses the bid the screenshot was actually taken under,
+      // never the bid that happens to be active at attach time. This is the
+      // fix for the back-to-back-flights mis-attribution bug.
+      const [telemetry, binding] = await Promise.all([
+        captureTelemetry(ctx.logger),
+        getActiveFlightBinding(ctx.logger),
+      ]);
+      const tagged = await store.upsertScreenshot({
+        ...baseShot,
+        telemetry,
+        capturedBidId: binding?.bidId ?? null,
+      });
       await broadcastScreenshots();
 
       // 3) If autoAttach is on, fire attach immediately. Lets the user walk
@@ -169,20 +180,45 @@ export function createRouter(
 
   // Run the attach flow: marks attaching → POSTs to the crew system via the
   // local /api/va proxy → marks attached or error. Returns the final
-  // Screenshot record, or one of two sentinels when attach can't even start:
-  //   NO_FLIGHT — there is no active flight at all
-  //   NO_BID    — there's a flight, but it isn't VA-sourced (no bid to bind to)
+  // Screenshot record, or one of these sentinels when attach can't even
+  // start:
+  //   NO_FLIGHT     — there is no active flight at all
+  //   NO_BID        — there's a flight, but it isn't VA-sourced (no bid)
+  //   WRONG_FLIGHT  — the shot is pinned to a different VA flight than the
+  //                   one currently active. Refusing rather than silently
+  //                   uploading against the new bid is the fix for the
+  //                   back-to-back-flights mis-attribution bug.
   const NO_FLIGHT = Symbol("no-flight");
   const NO_BID = Symbol("no-bid");
-  type AttachResult = Screenshot | null | typeof NO_FLIGHT | typeof NO_BID;
+  const WRONG_FLIGHT = Symbol("wrong-flight");
+  type AttachResult =
+    | Screenshot
+    | null
+    | typeof NO_FLIGHT
+    | typeof NO_BID
+    | typeof WRONG_FLIGHT;
 
   const runAttach = async (id: string): Promise<AttachResult> => {
     const shot = await store.getScreenshot(id);
     if (!shot) return null;
 
+    const capturedBidId = shot.capturedBidId ?? null;
     const binding = await getActiveFlightBinding(ctx.logger);
-    if (!binding) return NO_FLIGHT;
-    if (binding.bidId == null) return NO_BID;
+
+    // Pick the bid to upload against. When the shot was pinned at capture
+    // (capturedBidId != null), we *only* upload if the active flight still
+    // matches it. When there's no pin (legacy shot or captured outside any
+    // VA flight), we fall back to the live binding so the user can still
+    // attach to the current flight as a deliberate action.
+    let targetBidId: string;
+    if (capturedBidId != null) {
+      if (!binding || binding.bidId !== capturedBidId) return WRONG_FLIGHT;
+      targetBidId = capturedBidId;
+    } else {
+      if (!binding) return NO_FLIGHT;
+      if (binding.bidId == null) return NO_BID;
+      targetBidId = binding.bidId;
+    }
 
     await store.upsertScreenshot({
       ...shot,
@@ -193,7 +229,7 @@ export function createRouter(
     try {
       const { serverId, photoId } = await uploadScreenshot(
         shot,
-        binding.bidId,
+        targetBidId,
         ctx.airline,
         ctx.logger,
       );
@@ -203,7 +239,7 @@ export function createRouter(
           status: "attached",
           serverId,
           attachedAt: Date.now(),
-          bidId: binding.bidId,
+          bidId: targetBidId,
           photoId,
         },
       });
@@ -241,6 +277,14 @@ export function createRouter(
         error: "no-va-bid",
         message:
           "This flight isn't booked through the VA, so screenshots can't be attached to a PIREP.",
+      });
+      return;
+    }
+    if (result === WRONG_FLIGHT) {
+      res.status(409).json({
+        error: "wrong-flight",
+        message:
+          "This screenshot was captured during a different flight and can't be attached to the current one.",
       });
       return;
     }

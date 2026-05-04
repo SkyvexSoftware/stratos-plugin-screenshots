@@ -177,6 +177,12 @@ function BottomChrome({
   const isAttaching = status === "attaching";
   const isError = status === "error";
   const noFlight = currentBidId == null;
+  // Pinned to a different VA bid than the one currently active. Mirrors the
+  // ScreenshotCard gate so the lightbox can't trigger a cross-flight rebind
+  // either.
+  const capturedBidId = shot.capturedBidId ?? null;
+  const wrongFlight =
+    capturedBidId != null && capturedBidId !== currentBidId;
 
   return (
     <div className="absolute bottom-0 left-0 right-0 flex flex-col bg-gradient-to-t from-black/85 via-black/55 to-transparent">
@@ -264,6 +270,14 @@ function BottomChrome({
           <span className="shrink-0 inline-flex items-center h-8 px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-green/90">
             ✓ Attached
           </span>
+        ) : wrongFlight ? (
+          <ChromeBtn
+            onClick={() => {}}
+            disabled
+            label="This screenshot was captured during a different flight"
+          >
+            <span>Wrong flight</span>
+          </ChromeBtn>
         ) : noFlight ? (
           <ChromeBtn
             onClick={() => {}}
