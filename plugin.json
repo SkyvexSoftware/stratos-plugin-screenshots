@@ -3,7 +3,7 @@
   "id": "screenshots",
   "type": "airline",
   "name": "Screenshots",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Watches folders on disk for new screenshots, tags each one with live flight telemetry (phase, position, route, callsign, elapsed time), and attaches them to the pilot's current PIREP. Captures keep flowing whether the plugin pane is open or closed.",
   "author": {
     "id": "skyvex-software",

@@ -79,7 +79,20 @@ export async function uploadScreenshot(
   try {
     res = await fetch(url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${airline.token}` },
+      headers: {
+        Authorization: `Bearer ${airline.token}`,
+        // Force a JSON error contract. Without this, frameworks like Laravel
+        // answer a failed `validate()` (e.g. file over the size cap) with a
+        // 302 redirect-back instead of a 422. `fetch` would then follow that
+        // redirect to a 200 HTML page, so a *rejected* upload came back as a
+        // success and the shot was marked "attached". Asking for JSON keeps
+        // the server on the documented 4xx-with-body path.
+        Accept: "application/json",
+      },
+      // Never auto-follow redirects: a 3xx on this endpoint is always an error
+      // masquerading as success (validation redirect-back, auth bounce). We
+      // detect it below and surface it as a failure instead of swallowing it.
+      redirect: "manual",
       body: form,
     });
   } catch (err) {
@@ -88,6 +101,19 @@ export async function uploadScreenshot(
       `network error posting to ${url}: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw new Error("network error reaching VA");
+  }
+
+  // A redirected response (opaque, status 0 under `redirect: "manual"`) means
+  // the server bounced us rather than accepting the upload. Treat it as a hard
+  // rejection so the success path can't mark the shot "attached".
+  if (res.type === "opaqueredirect" || (res.status >= 300 && res.status < 400)) {
+    logger.warn(
+      "Attach",
+      `upload to ${url} was redirected (status ${res.status}) — treating as rejection`,
+    );
+    throw new Error(
+      "VA rejected upload (unexpected redirect — check sign-in or file size)",
+    );
   }
 
   if (!res.ok) {
@@ -139,7 +165,11 @@ export async function deleteUploadedScreenshot(
   try {
     res = await fetch(url, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${airline.token}` },
+      headers: {
+        Authorization: `Bearer ${airline.token}`,
+        Accept: "application/json",
+      },
+      redirect: "manual",
     });
   } catch (err) {
     logger.error(
@@ -149,7 +179,11 @@ export async function deleteUploadedScreenshot(
     throw new Error("network error reaching VA");
   }
 
-  if (!res.ok) {
+  if (
+    res.type === "opaqueredirect" ||
+    (res.status >= 300 && res.status < 400) ||
+    !res.ok
+  ) {
     logger.warn(
       "Attach",
       `VA delete failed for ${photoId}: ${res.status} ${res.statusText}`,
