@@ -11,9 +11,10 @@
     "build:bg": "cross-env BUILD_TARGET=background vite build"
   },
   "devDependencies": {
-    "@skyvexsoftware/stratos-sdk": "^0.7.7",
+    "@skyvexsoftware/stratos-sdk": "^0.15.0",
     "@tailwindcss/vite": "^4",
     "@types/express": "^5.0.6",
+    "@types/node": "^22.20.0",
     "@types/react": "^19",
     "@vitejs/plugin-react": "^5",
     "cross-env": "^7",

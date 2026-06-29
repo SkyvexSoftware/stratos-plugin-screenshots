@@ -28,6 +28,14 @@ export function createRouter(
   pool: FolderWatchPool,
 ): Router {
   const router = Router();
+
+  // Shared VA API client: resolves the airline base URL + bearer per request
+  // and refreshes the access token on a 401. Created once — the shell says it
+  // is safe to cache for the lifetime of the background module — so a token
+  // rotation mid-session recovers automatically instead of failing every
+  // upload the way the old captured-token fetch did.
+  const va = ctx.airline.createClient();
+
   router.use(express.json({ limit: "256kb" }));
   router.use((_, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -178,8 +186,8 @@ export function createRouter(
     res.json(await store.listScreenshots());
   });
 
-  // Run the attach flow: marks attaching → POSTs to the crew system via the
-  // local /api/va proxy → marks attached or error. Returns the final
+  // Run the attach flow: marks attaching → uploads to the VA through the
+  // shared refresh-aware client → marks attached or error. Returns the final
   // Screenshot record, or one of these sentinels when attach can't even
   // start:
   //   NO_FLIGHT     — there is no active flight at all
@@ -230,7 +238,7 @@ export function createRouter(
       const { serverId, photoId } = await uploadScreenshot(
         shot,
         targetBidId,
-        ctx.airline,
+        va,
         ctx.logger,
       );
       const final = await store.upsertScreenshot({
@@ -244,17 +252,40 @@ export function createRouter(
         },
       });
       await broadcastScreenshots();
+      // A success means the pipeline is healthy again — clear any "failed"
+      // flag we may have raised on the sidebar from an earlier attempt.
+      void ctx.plugin.clearIndicator().catch(() => {});
       return final.find((s) => s.id === id) ?? null;
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       const errored = await store.upsertScreenshot({
         ...shot,
         attachment: {
           status: "error",
-          error: err instanceof Error ? err.message : String(err),
+          error: message,
           failedAt: Date.now(),
         },
       });
       await broadcastScreenshots();
+      // Surface the failure even when the pilot can't see the card — auto-attach
+      // fires with the pane closed, and a manual attach may be scrolled out of
+      // view. The toast is the immediate signal; the sidebar indicator persists
+      // until they open the plugin. Both are fire-and-forget: a notification
+      // failing must not mask the upload error itself.
+      void ctx.notify
+        .toast({
+          type: "error",
+          title: "Screenshot not attached",
+          message,
+        })
+        .catch(() => {});
+      void ctx.plugin
+        .setIndicator({
+          type: "warning",
+          tooltip: "A screenshot failed to attach to your flight",
+          dismissOnOpen: true,
+        })
+        .catch(() => {});
       return errored.find((s) => s.id === id) ?? null;
     }
   };
@@ -318,7 +349,7 @@ export function createRouter(
       try {
         await deleteUploadedScreenshot(
           shot.attachment.photoId,
-          ctx.airline,
+          va,
           ctx.logger,
         );
       } catch (err) {

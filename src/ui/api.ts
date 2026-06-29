@@ -9,6 +9,34 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
+/**
+ * Parse an attach response, throwing on failure so the caller isn't handed a
+ * silent non-2xx. The background answers a rejected attach with either
+ * `{ error, message }` (the 4xx gate cases: no flight / no bid / wrong flight)
+ * or the errored Screenshot record with a 502 (a VA upload rejection). Either
+ * way we surface the most specific message we can find rather than treating
+ * the body as a successful Screenshot.
+ */
+async function attachResultOrThrow(res: Response): Promise<Screenshot> {
+  const body: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const fromBody =
+      body && typeof body === "object"
+        ? ((body as Record<string, unknown>).message ??
+          (body as Record<string, unknown>).error ??
+          ((body as Record<string, unknown>).attachment as
+            | Record<string, unknown>
+            | undefined)?.error)
+        : null;
+    throw new Error(
+      typeof fromBody === "string" && fromBody
+        ? fromBody
+        : `${res.status} ${res.statusText}`,
+    );
+  }
+  return body as Screenshot;
+}
+
 export const api = {
   listFolders: () =>
     fetch(url(ROUTES.folders)).then(jsonOrThrow<WatchedFolder[]>),
@@ -28,7 +56,7 @@ export const api = {
 
   attachScreenshot: (id: string) =>
     fetch(url(ROUTES.screenshotAttach(id)), { method: "POST" }).then(
-      (r) => r.json() as Promise<Screenshot>,
+      attachResultOrThrow,
     ),
 
   deleteScreenshot: (id: string) =>
