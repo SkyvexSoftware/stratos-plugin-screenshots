@@ -243,25 +243,38 @@ function BottomChrome({
 
       {/* Always-visible bottom strip — quick telemetry + actions */}
       <div className="px-5 py-3 flex items-center gap-3">
-        {/* Quick telemetry summary */}
-        <div className="flex-1 min-w-0 flex items-center gap-2 font-mono text-[11px] text-white/80 overflow-hidden">
+        {/* Quick telemetry summary: plain readouts, since boxes read as buttons */}
+        <div className="flex-1 min-w-0 flex items-center gap-2.5 font-mono text-[11px] uppercase whitespace-nowrap overflow-hidden scr-tnum">
           {t === null ? (
-            <span className="text-white/50 tracking-[0.18em] uppercase animate-pulse">
+            <span className="text-white/50 tracking-[0.18em] animate-pulse">
               tagging…
             </span>
           ) : (
-            <>
-              <Pill label={fmtPhase(t.phase)} />
-              <Pill label={fmtAlt(t.altitudeFt)} />
-              <Pill label={fmtSpeed(t.groundSpeedKt)} />
-              <Pill label={fmtHeading(t.headingDeg)} />
-              {t.flight && (
-                <Pill
-                  label={`${t.flight.callsign} · ${t.flight.departureIcao}→${t.flight.arrivalIcao}`}
-                  accent
-                />
-              )}
-            </>
+            [
+              t.flight && (
+                <span key="flight" className="text-white font-semibold">
+                  {t.flight.callsign}
+                  <span className="text-white/60 font-normal ml-2">
+                    {t.flight.departureIcao}→{t.flight.arrivalIcao}
+                  </span>
+                </span>
+              ),
+              t.phase && <Readout key="phase" value={fmtPhase(t.phase)} />,
+              <Readout key="alt" value={fmtAlt(t.altitudeFt)} />,
+              <Readout key="gs" value={fmtSpeed(t.groundSpeedKt)} />,
+              <Readout key="hdg" value={fmtHeading(t.headingDeg)} />,
+            ]
+              .filter(Boolean)
+              .flatMap((item, i) =>
+                i === 0
+                  ? [item]
+                  : [
+                      <span key={`sep${i}`} className="text-white/25" aria-hidden>
+                        ·
+                      </span>,
+                      item,
+                    ],
+              )
           )}
         </div>
 
@@ -341,19 +354,8 @@ function BottomChrome({
   );
 }
 
-function Pill({ label, accent }: { label: string; accent?: boolean }) {
-  return (
-    <span
-      className={[
-        "shrink-0 inline-flex items-center h-7 px-2 rounded-md border whitespace-nowrap scr-tnum",
-        accent
-          ? "border-primary/40 bg-primary/15 text-white"
-          : "border-white/10 bg-white/[0.04] text-white/85",
-      ].join(" ")}
-    >
-      {label}
-    </span>
-  );
+function Readout({ value }: { value: string }) {
+  return <span className="text-white/80">{value}</span>;
 }
 
 function ChromeBtn({
@@ -395,10 +397,10 @@ function ChromeBtn({
     tone === "primary"
       ? "bg-primary text-primary-foreground border-primary hover:brightness-110"
       : blocked
-        ? "border-white/20! text-white/85! opacity-50! cursor-not-allowed!"
+        ? "border-white/15! bg-white/[0.04]! text-white/85! opacity-50! cursor-not-allowed!"
         : danger
-          ? "border-white/20! text-white/75! hover:bg-white/10! hover:text-destructive! hover:border-destructive/50!"
-          : "border-white/20! text-white/85! hover:bg-white/10! hover:text-white!";
+          ? "border-white/15! bg-white/[0.04]! text-white/85! hover:bg-destructive/15! hover:text-destructive! hover:border-destructive/60!"
+          : "border-white/15! bg-white/[0.04]! text-white/85! hover:bg-white/10! hover:border-white/30! hover:text-white!";
   const button = (
     <button
       type="button"
