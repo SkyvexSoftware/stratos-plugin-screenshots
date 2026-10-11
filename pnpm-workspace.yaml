@@ -1,2 +1,4 @@
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@skyvexsoftware/stratos-sdk@0.21.0'

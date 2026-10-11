@@ -11,7 +11,7 @@
   },
   "icon_light": "icon-light.svg",
   "icon_dark": "icon-dark.svg",
-  "availableSettings": [
+  "available_settings": [
     {
       "key": "autoAttach",
       "name": "Auto-attach screenshots",
