@@ -8,6 +8,7 @@ import {
 import { ChevronDown, ChevronUp, Folder, Trash2 } from "lucide-react";
 import { api } from "../api";
 import { isAttachedToCurrentFlight } from "../attachment";
+import { ConfirmRemoveDialog } from "./ConfirmRemoveDialog";
 import {
   fmtAlt,
   fmtCoordPrecise,
@@ -34,6 +35,7 @@ export function LightboxDialog({
 }: Props) {
   const [imgError, setImgError] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const open = shot !== null;
 
   const onOpenChange = (next: boolean) => {
@@ -92,11 +94,13 @@ export function LightboxDialog({
               onToggleDetails={() => setDetailsOpen((v) => !v)}
               onAttach={() => fire(api.attachScreenshot(shot.id))}
               onReveal={() => fire(api.revealScreenshot(shot.id))}
-              onDelete={() => {
-                if (confirm("Remove this screenshot from the list?")) {
-                  fire(api.deleteScreenshot(shot.id), true);
-                }
-              }}
+              onDelete={() => setConfirmRemove(true)}
+            />
+            <ConfirmRemoveDialog
+              shot={shot}
+              open={confirmRemove}
+              onOpenChange={setConfirmRemove}
+              onConfirm={() => fire(api.deleteScreenshot(shot.id), true)}
             />
           </div>
         )}

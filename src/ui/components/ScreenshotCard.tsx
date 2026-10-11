@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { isAttachedToCurrentFlight } from "../attachment";
+import { ConfirmRemoveDialog } from "./ConfirmRemoveDialog";
 import {
   fmtAltCompact,
   fmtCoordPrecise,
@@ -43,6 +44,7 @@ export function ScreenshotCard({
   };
   const { telemetry: t, attachment } = shot;
   const [imgError, setImgError] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const isAttached = isAttachedToCurrentFlight(shot, currentBidId);
   const isError = attachment.status === "error";
@@ -114,11 +116,7 @@ export function ScreenshotCard({
           <IconBtn
             label="Remove from list"
             danger
-            onClick={() => {
-              if (confirm("Remove this screenshot from the list?")) {
-                fire(api.deleteScreenshot(shot.id));
-              }
-            }}
+            onClick={() => setConfirmRemove(true)}
           >
             <RemoveIcon />
           </IconBtn>
@@ -133,6 +131,12 @@ export function ScreenshotCard({
           </div>
         )}
       </div>
+      <ConfirmRemoveDialog
+        shot={shot}
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        onConfirm={() => fire(api.deleteScreenshot(shot.id))}
+      />
     </article>
   );
 }
