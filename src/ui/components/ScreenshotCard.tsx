@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { isAttachedToCurrentFlight } from "../attachment";
 import { ConfirmRemoveDialog } from "./ConfirmRemoveDialog";
+import { Hint } from "./Hint";
 import {
   fmtAltCompact,
   fmtCoordPrecise,
@@ -108,13 +109,13 @@ export function ScreenshotCard({
             onMutate={onMutate}
           />
           <IconBtn
-            label="Open file location"
+            label="Show in folder"
             onClick={() => fire(api.revealScreenshot(shot.id))}
           >
             <FolderIcon />
           </IconBtn>
           <IconBtn
-            label="Remove from list"
+            label="Remove screenshot"
             danger
             onClick={() => setConfirmRemove(true)}
           >
@@ -276,14 +277,15 @@ function AttachButton({
     capturedBidId != null && capturedBidId !== currentBidId;
   if (wrongFlight) {
     return (
-      <button
-        type="button"
-        disabled
-        title="This screenshot was captured during a different flight"
-        className={`${baseCls} bg-transparent text-muted-foreground/50 border border-border/60 cursor-not-allowed`}
-      >
-        Wrong flight
-      </button>
+      <Hint label="Captured during a different flight, so it can't be attached to this one">
+        <button
+          type="button"
+          aria-disabled="true"
+          className={`${baseCls} bg-transparent text-muted-foreground/50 border border-border/60 cursor-not-allowed!`}
+        >
+          Wrong flight
+        </button>
+      </Hint>
     );
   }
 
@@ -293,29 +295,34 @@ function AttachButton({
   const noFlight = currentBidId == null;
   if (noFlight) {
     return (
-      <button
-        type="button"
-        disabled
-        title="Start a flight to attach screenshots"
-        className={`${baseCls} bg-transparent text-muted-foreground/50 border border-border/60 cursor-not-allowed`}
-      >
-        No flight
-      </button>
+      <Hint label="Start a flight to attach screenshots">
+        <button
+          type="button"
+          aria-disabled="true"
+          className={`${baseCls} bg-transparent text-muted-foreground/50 border border-border/60 cursor-not-allowed!`}
+        >
+          No flight
+        </button>
+      </Hint>
     );
   }
 
   if (attachment.status === "error") {
-    return (
+    const retry = (
       <button
         type="button"
         onClick={onClick}
-        title={attachment.error}
         className={`${baseCls} bg-transparent text-destructive border border-destructive hover:bg-destructive/10 ${
           pressed ? "brightness-150" : ""
         }`}
       >
         Retry <span className="font-bold">↻</span>
       </button>
+    );
+    return attachment.error ? (
+      <Hint label={attachment.error}>{retry}</Hint>
+    ) : (
+      retry
     );
   }
 
@@ -344,11 +351,11 @@ function IconBtn({
   danger?: boolean;
 }) {
   return (
+    <Hint label={label}>
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      title={label}
       className={[
         "shrink-0 inline-flex items-center justify-center rounded border border-border text-muted-foreground transition-colors duration-75",
         // Fixed width; self-stretch lets the parent (items-stretch) match
@@ -361,6 +368,7 @@ function IconBtn({
     >
       {children}
     </button>
+    </Hint>
   );
 }
 

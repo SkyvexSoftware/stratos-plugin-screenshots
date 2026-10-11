@@ -9,6 +9,7 @@ import { ChevronDown, ChevronUp, Folder, Trash2 } from "lucide-react";
 import { api } from "../api";
 import { isAttachedToCurrentFlight } from "../attachment";
 import { ConfirmRemoveDialog } from "./ConfirmRemoveDialog";
+import { Hint } from "./Hint";
 import {
   fmtAlt,
   fmtCoordPrecise,
@@ -283,7 +284,8 @@ function BottomChrome({
           <ChromeBtn
             onClick={() => {}}
             disabled
-            label="This screenshot was captured during a different flight"
+            label="Wrong flight"
+            hint="Captured during a different flight, so it can't be attached to this one"
           >
             <span>Wrong flight</span>
           </ChromeBtn>
@@ -291,7 +293,8 @@ function BottomChrome({
           <ChromeBtn
             onClick={() => {}}
             disabled
-            label="Start a flight to attach screenshots"
+            label="No flight"
+            hint="Start a flight to attach screenshots"
           >
             <span>No flight</span>
           </ChromeBtn>
@@ -300,6 +303,11 @@ function BottomChrome({
             onClick={onAttach}
             disabled={isAttaching}
             label={isAttaching ? "Transmitting" : isError ? "Retry" : "Attach"}
+            hint={
+              shot.attachment.status === "error"
+                ? shot.attachment.error
+                : undefined
+            }
             tone="primary"
           >
             <span>
@@ -310,10 +318,21 @@ function BottomChrome({
 
         {/* Secondary icon actions */}
         <div className="shrink-0 flex items-center gap-1">
-          <ChromeBtn onClick={onReveal} label="Reveal in finder" iconOnly>
+          <ChromeBtn
+            onClick={onReveal}
+            label="Show in folder"
+            hint="Show in folder"
+            iconOnly
+          >
             <Folder size={13} strokeWidth={1.75} />
           </ChromeBtn>
-          <ChromeBtn onClick={onDelete} label="Delete" iconOnly danger>
+          <ChromeBtn
+            onClick={onDelete}
+            label="Remove screenshot"
+            hint="Remove screenshot"
+            iconOnly
+            danger
+          >
             <Trash2 size={13} strokeWidth={1.75} />
           </ChromeBtn>
         </div>
@@ -341,6 +360,7 @@ function ChromeBtn({
   children,
   onClick,
   label,
+  hint,
   disabled,
   iconOnly,
   danger,
@@ -349,6 +369,8 @@ function ChromeBtn({
   children: React.ReactNode;
   onClick: () => void;
   label: string;
+  /** Tooltip text, for controls whose visible text doesn't say enough. */
+  hint?: string;
   disabled?: boolean;
   iconOnly?: boolean;
   danger?: boolean;
@@ -365,24 +387,31 @@ function ChromeBtn({
   const base =
     "inline-flex shrink-0 items-center justify-center h-8 min-h-0 box-border leading-none gap-1.5 rounded-md border font-mono text-[10px] uppercase tracking-[0.18em]! transition-colors disabled:opacity-50 disabled:pointer-events-none";
   const shape = iconOnly ? "w-8" : "px-3";
+  // A blocked control with a hint stays enabled-but-inert (aria-disabled) so
+  // it still gets the pointer events the tooltip needs. Opacity and cursor
+  // need `!` too: the shell's preflight resets both on every button.
+  const blocked = Boolean(disabled && hint);
   const colors =
     tone === "primary"
       ? "bg-primary text-primary-foreground border-primary hover:brightness-110"
-      : danger
-        ? "border-white/20! text-white/75! hover:bg-white/10! hover:text-destructive! hover:border-destructive/50!"
-        : "border-white/20! text-white/85! hover:bg-white/10! hover:text-white!";
-  return (
+      : blocked
+        ? "border-white/20! text-white/85! opacity-50! cursor-not-allowed!"
+        : danger
+          ? "border-white/20! text-white/75! hover:bg-white/10! hover:text-destructive! hover:border-destructive/50!"
+          : "border-white/20! text-white/85! hover:bg-white/10! hover:text-white!";
+  const button = (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled && !blocked}
+      aria-disabled={blocked || undefined}
       aria-label={label}
-      title={label}
       className={[base, shape, colors].join(" ")}
     >
       {children}
     </button>
   );
+  return hint ? <Hint label={hint}>{button}</Hint> : button;
 }
 
 function DetailGroup({
