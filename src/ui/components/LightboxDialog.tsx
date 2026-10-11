@@ -349,15 +349,19 @@ function ChromeBtn({
   // `tone="primary"` paints it red for the main CTA; `iconOnly` makes it square.
   // `min-h-0 leading-none box-border` prevent flex's default `min-height: auto`
   // from inflating the button via taller content (e.g. unicode glyphs).
+  // The shell wraps plugin CSS in its lowest layer, so its preflight
+  // (`button { color: inherit; letter-spacing: inherit }`, `* { border-color }`)
+  // beats our utilities. The `!` keeps the white-on-black chrome legible when
+  // the shell is in light theme and `inherit` resolves to dark text.
   const base =
-    "inline-flex shrink-0 items-center justify-center h-8 min-h-0 box-border leading-none gap-1.5 rounded-md border font-mono text-[10px] uppercase tracking-[0.18em] transition-colors disabled:opacity-50 disabled:pointer-events-none";
+    "inline-flex shrink-0 items-center justify-center h-8 min-h-0 box-border leading-none gap-1.5 rounded-md border font-mono text-[10px] uppercase tracking-[0.18em]! transition-colors disabled:opacity-50 disabled:pointer-events-none";
   const shape = iconOnly ? "w-8" : "px-3";
   const colors =
     tone === "primary"
       ? "bg-primary text-primary-foreground border-primary hover:brightness-110"
       : danger
-        ? "border-white/10 text-white/60 hover:bg-white/5 hover:text-destructive hover:border-destructive/50"
-        : "border-white/10 text-white/70 hover:bg-white/5 hover:text-white";
+        ? "border-white/20! text-white/75! hover:bg-white/10! hover:text-destructive! hover:border-destructive/50!"
+        : "border-white/20! text-white/85! hover:bg-white/10! hover:text-white!";
   return (
     <button
       type="button"
