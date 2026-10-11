@@ -131,11 +131,13 @@ function TopChrome({
         ? "text-destructive"
         : status === "attaching"
           ? "text-primary"
-          : "text-white/45";
+          : "text-white/60";
 
   return (
-    // Reserve right-12 to clear the SDK's built-in close X (absolute right-4 top-4).
-    <div className="absolute top-0 left-0 right-0 pl-5 pr-12 py-3 flex items-baseline gap-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+    // Same frosted panel as BottomChrome, so the filename reads over bright
+    // images. h-12 centres on the SDK's close X (right-4 top-4, 16px), and
+    // pr-12 keeps the text clear of it.
+    <div className="absolute top-0 left-0 right-0 h-12 pl-5 pr-12 flex items-center gap-3 bg-black/75 backdrop-blur-xl backdrop-saturate-150 border-b border-white/10! pointer-events-none">
       <span
         className={`shrink-0 font-mono text-[9px] uppercase tracking-[0.22em] pointer-events-auto ${tone}`}
       >
@@ -189,10 +191,13 @@ function BottomChrome({
     capturedBidId != null && capturedBidId !== currentBidId;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 flex flex-col bg-gradient-to-t from-black/85 via-black/55 to-transparent">
+    // One frosted panel, opaque to its top edge. A fade-out gradient left the
+    // details text sitting on near-transparent black over bright images.
+    // Border colours need `!` for the same shell-layer reason as ChromeBtn.
+    <div className="absolute bottom-0 left-0 right-0 flex flex-col bg-black/75 backdrop-blur-xl backdrop-saturate-150 border-t border-white/10!">
       {/* Expanded details panel — only shown when toggled */}
       {detailsOpen && t && (
-        <div className="px-5 pb-3 pt-6 grid grid-cols-2 @[720px]/lightbox:grid-cols-4 gap-x-6 gap-y-3 text-[11px] backdrop-blur-md">
+        <div className="px-5 pt-4 pb-3 grid grid-cols-2 @[720px]/lightbox:grid-cols-4 gap-x-6 gap-y-3 text-[11px] border-b border-white/10!">
           <DetailGroup title="Captured">
             <Detail
               label="At"
@@ -236,7 +241,7 @@ function BottomChrome({
       )}
 
       {/* Always-visible bottom strip — quick telemetry + actions */}
-      <div className="px-5 py-3 flex items-center gap-3 backdrop-blur-md">
+      <div className="px-5 py-3 flex items-center gap-3">
         {/* Quick telemetry summary */}
         <div className="flex-1 min-w-0 flex items-center gap-2 font-mono text-[11px] text-white/80 overflow-hidden">
           {t === null ? (
