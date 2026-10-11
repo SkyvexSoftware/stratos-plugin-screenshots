@@ -81,8 +81,8 @@ export function createRouter(
       // never the bid that happens to be active at attach time. This is the
       // fix for the back-to-back-flights mis-attribution bug.
       const [telemetry, binding] = await Promise.all([
-        captureTelemetry(ctx.logger),
-        getActiveFlightBinding(ctx.logger),
+        captureTelemetry(ctx.flight, ctx.logger),
+        getActiveFlightBinding(ctx.flight, ctx.logger),
       ]);
       const tagged = await store.upsertScreenshot({
         ...baseShot,
@@ -211,7 +211,7 @@ export function createRouter(
     if (!shot) return null;
 
     const capturedBidId = shot.capturedBidId ?? null;
-    const binding = await getActiveFlightBinding(ctx.logger);
+    const binding = await getActiveFlightBinding(ctx.flight, ctx.logger);
 
     // Pick the bid to upload against. When the shot was pinned at capture
     // (capturedBidId != null), we *only* upload if the active flight still
