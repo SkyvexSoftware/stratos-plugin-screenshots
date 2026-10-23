@@ -129,6 +129,11 @@ function describeVaError(err: unknown, action: string): string {
     if (res.status === 401 || res.status === 419) {
       return "VA session expired — please sign in again";
     }
+    // A 5xx is the airline's server failing; its body is usually an HTML
+    // error page, which is no use to the pilot.
+    if (res.status >= 500) {
+      return `The airline's server isn't responding right now (${res.status}), try again shortly`;
+    }
     const detail = describeBody(res.data);
     return `VA rejected ${action} (${res.status})${detail ? `: ${detail}` : ""}`;
   }
